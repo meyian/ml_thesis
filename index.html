@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+    <!-- todo: figure out what these things mean -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <title>Vanilla Bootstrap</title>
+
+
+    <link href="./css/bootstrap.css" rel="stylesheet">
+    <!-- link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous" -->
+
+    <!-- Custom styles for this template -->
+    <link href="css/main.css" rel="stylesheet">
+
+
+    <!-- link rel="stylesheet" href="css/jquery-ui.css" -->
+    <!-- todo: get the cdn version of this -->
+
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <style>
+      #tx-area{
+        width: 80vw;
+        height: 40vw;
+      }
+      body{
+        padding-left: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="div-container">
+      
+        <h1>Hello, Africa!</h1>
+        <textarea id="tx-area">
+        </textarea>
+    
+    </div>
+
+    <script src="./js/jquery.js"></script>
+    <!-- script
+      src="https://code.jquery.com/jquery-3.2.1.min.js"
+      integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+      crossorigin="anonymous"></script -->
+
+    <script src="./js/underscore-min.js"></script>
+    <!-- script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script -->
+
+    <!-- <script src="./js/moment.js"></script> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.7.0/moment.js"></script> -->
+    
+
+    <!-- script src="./js/jquery-ui.js"></script -->
+    <!-- script
+      src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js"
+      integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E="
+      crossorigin="anonymous"></script -->
+    
+    <script src="./js/bootstrap.js"></script>
+    <!-- script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script -->
+
+    <!-- script src="https://www.lactame.com/lib/ml/3.2.0/ml.min.js"></script -->
+
+    <script src="js/color.js"></script>
+    <script src="js/site_data.js"></script>
+    <script src="js/mlab.js"></script>
+
+    <script src="./js/mlab_results.js"></script>
+    <script src="./js/mlab_data_fns.js"></script>
+
+    <!-- script src="js/get_survey_data.js"></script -->
+    <script type="text/javascript">
+
+
+
+
+
+
+
+      //  ----------------------   variables  ------------------------
+
+      var objResults;
+      const cintNumSites = 63;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      //  ----------------------   classes  ------------------------
+
+      /*
+        Documentation:
+
+          This stores the results from the MongoDB store.
+
+          It's supposed to able to return X and Y (average / array) for each site. This is its main function.
+
+          It's also supposed to return an array of the complete results.
+
+        Todo:
+
+          Each site needs an array of results, and possibly email addresses.
+
+        Asides:
+
+          I've gone back to hating my parents. Up to me, fuck this MPhil shit, from beginning to end. But becuase I can't afford rent anywhere else, it's back to this hellish nonsense of my childhood. Anyway, they're just lazy old children, like the rest of the world. And I like children, mostly.
+
+          This playlist is getting tedious. It sounded like a song I didn't like played after itself, twice in a row. But they were different. And now there's this new shit, that's equally dour. Feels like the aftermath of an unpleasant cigarette. Actually, that's so true, I'm going to keep this song around. Like the anger of that experience, you know? And he's going on about it like it's so important, he's got to keep interrupting me when I'm trying to explaining my own life problems. Here's the song for reference: https://www.youtube.com/watch?v=BDOF6SmtEOY&index=8&list=PL9910A6AC567D10DA
+
+          But yeah, I've gotta kill this playlist.
+
+
+
+
+      */
+
+      class MLClassifier{
+
+        constructor(fnClassifier, arrXData, arrYData, objOptions){
+
+          this.classifierType = fnClassifier;
+          this.xDataRaw = arrXData;
+          this.yDataRaw = arrYData;
+          this.yDataInts = [];
+          this.options = this.objOptions || null;
+          this.numOfFolds = 7;
+
+          this.startMax = 5;
+          this.endMax = 20;
+
+          this.stretchYData();
+
+        }
+
+        stretchYData(startMax, endMax, fValue){
+          var intStretchFactor = Math.ceil(endMax / startMax);
+          
+
+          for (var i=0; i<this.yDataRaw.length; i++){
+            var fScore = this.yDataRaw[i];
+            var fNewValue = intStretchFactor * fValue;
+
+            var intNewValue = Math.floor(fNewValue);
+            
+            this.yDataInts[i] = intNewValue;
+          }
+        }
+
+        getRandomSplitData(intK){
+
+          var intK = intK || 7;
+          var objRetTrainTest = {};
+          var intNumRows = this.getNumRows();
+
+          // console.log("MLClassifier::getRandomSplitData | intK: ", intK);
+          // console.log("MLClassifier::getRandomSplitData | intNumRows: ", intNumRows);
+          
+          var boolIsDivisor = (intNumRows % intK) == 0;
+
+          // console.log("MLClassifier::getRandomSplitData | boolIsDivisor: ", boolIsDivisor);
+
+          if (boolIsDivisor){
+
+            // get the number of test
+            var intNumTest = intNumRows / intK;
+
+            // make array of indices
+            var arrIndices = [], 
+                arrShuffledIndices = [],
+                arrTrainIndices, 
+                arrTestIndices,
+                objTrain, 
+                objTest;
+
+            for (var i=0; i<intNumRows; i++){
+              arrIndices.push(i);
+            }
+
+            // console.log("MLClassifier::getRandomSplitData | arrIndices: ", arrIndices);
+
+            // shuffle indices
+            arrShuffledIndices = _.shuffle(arrIndices);
+
+            // console.log("MLClassifier::getRandomSplitData | arrShuffledIndices: ", arrShuffledIndices);
+
+            // split indices
+            arrTestIndices  = arrShuffledIndices.slice(0, intNumTest);
+            arrTrainIndices = arrShuffledIndices.slice(intNumTest + 1, arrIndices.length);
+
+            // fill actual data
+            objTest = {
+              xData: arrTestIndices.map((x) => this.flattenXData(this.xDataRaw[x]) ),
+              yData: arrTestIndices.map((x) => this.yDataRaw[x]),
+            };
+
+            objTrain = {
+              xData: arrTrainIndices.map((x) => this.flattenXData(this.xDataRaw[x]) ),
+              yData: arrTrainIndices.map((x) => this.yDataRaw[x]),
+            };
+
+
+            objRetTrainTest = {
+              train: objTrain,
+              test: objTest,
+            }
+
+            // console.log("MLClassifier::getRandomSplitData | objRetTrainTest: ", objRetTrainTest);
+
+
+          }
+
+          return objRetTrainTest;
+        }
+
+        flattenXData(pjData){
+          var arrRetArr = [];
+
+          for (var i in pjData){
+            arrRetArr.push(+pjData[i]);
+          }
+
+          return arrRetArr;
+        }
+
+        // todo: understand this - https://stats.stackexchange.com/questions/27730/choice-of-k-in-k-fold-cross-validation
+
+        runClassifier(){
+
+          var pjData = this.getRandomSplitData(); // #todo, make the intK an option
+          this.classifier = new this.classifierType(this.options);
+          this.classifier.train(pjData.train.xData, pjData.train.xData);
+
+          var predictions = this.classifier.predict(pjData.test.xData);
+          var actual = pjData.test.yData;
+
+          // console.log("MLClassifier::runClassifier | predictions: ", predictions);
+          // console.log("MLClassifier::runClassifier | actual: ", actual);
+
+          // this.confusionMatrix = crossValidation.kFold(this.classifier, this.xData, this.yData, this.options, this.numOfFolds);
+
+        }
+
+        getAccuracy(){
+
+        }
+
+        getNumRows(){
+          var intNumRows = this.xDataRaw.length;
+
+          // console.log("MLClassifier::getRandomSplitData | this.xData: ", this.xDataRaw);
+          // console.log("MLClassifier::getRandomSplitData | intNumRows: ", intNumRows);
+
+          return intNumRows;
+
+        }
+
+
+      }
+
+
+      class Results{
+        constructor(data){
+          this.arrData = undefined;
+          this.objData = undefined;
+
+          if (isObject(data)){
+            this.objData = data;
+          }
+          else if (isArray(data)){
+            this.arrData = data;
+          }
+
+          this.setup();
+        }
+
+        completedSurveys(){
+          return this.completedSurveys;
+        }
+
+        setup(){
+
+          // console.log("Results::setup | alpha");
+
+          this.setupStudentResults();
+          this.setupSiteResults();
+          this.setupXandY();
+        }
+
+        setupXandY(){
+
+          // console.log("Results::setupXandY | alpha");
+
+          var objSiteResults = this.siteResults;
+
+          this.xData = [];
+          this.yData = [];
+
+          for (var i in objSiteResults){
+            var sytSiteRecord = objSiteResults[i];
+
+            var objX = sytSiteRecord.getXParams();
+            var fY = sytSiteRecord.getAverageScore();
+
+            this.xData.push(objX);
+            this.yData.push(fY);
+          }
+        }
+
+        setupSiteResults(){
+          // todo: test
+
+          var objStudents = this.getFinishedStudents();
+          
+          // console.log("Results::setupSiteResults | objStudents: ", objStudents);
+
+
+          this.siteResults = {};
+          var intIndex = 0;
+
+          for (var j in objStudents){
+
+            var stdTempStudent = objStudents[j];
+
+            if (intIndex % 34 == 0){
+              // console.log("Results::setupSiteResults | sample stdTempStudent: ", stdTempStudent); 
+            }
+            else{
+              // console.log("Results::setupSiteResults | j: ", j);
+            }
+
+            intIndex++;
+
+            for (var i=0; i<cintNumSites; i++){
+
+              var sytResultsRecord = this.siteResults[i];
+              var sytTempSite = stdTempStudent.getSite(i);
+              var fSiteScore  = sytTempSite.getScore();
+
+              if (sytResultsRecord){
+                sytResultsRecord.addScore(fSiteScore);
+              }
+              else{
+                var sytNewSite = sytTempSite.clone();
+                this.siteResults[i] = sytNewSite;
+              }
+            }
+          }
+        }
+
+        setupStudentResults(){
+          if (this.objData){
+            this.setupStudentResultsObject();
+          }
+          else if (this.arrData){
+            this.setupStudentResultsArray();
+          }
+        }
+
+        setupStudentResultsArray(){
+
+          // console.log("Results::setupStudentResultsArray | alpha");
+
+          var arrData = this.arrData;
+
+          this.students = [];
+          this.finishedStudents = [];
+
+          for (var i in arrData){
+            var objRow = arrData[i];
+
+            var stTemp = new Student(objRow);
+            var intAnswered = stTemp.getNumAnswers();
+
+            this.students.push(stTemp);
+
+            if (intAnswered >= cintNumSites){
+              this.finishedStudents.push(stTemp.getNumAnswers());
+            }
+          }
+        }
+
+        setupStudentResultsObject(){
+
+          // console.log("Results::setupStudentResultsObject | alpha");
+
+          this.finishedStudents = this.objData.finishedStudents;
+
+          for (var i in this.finishedStudents){
+
+            var objRow = this.finishedStudents[i];
+            var stTemp = new Student(objRow);
+            this.finishedStudents[i] = stTemp;
+
+          }
+        }
+
+        getFinishedStudents(){
+          return this.finishedStudents;
+        }
+
+        xData(){
+          return  this.xData;
+        }
+
+        yData(){
+          return  this.xData;
+        }
+      }
+
+
+
+      var boolHasPrinted = false;
+
+      /*
+
+      Documentation
+
+        This class contains a record for a site ("variation").
+
+        Need to contain an array of all the votes that this site received. Hopefully the student email too.
+
+      */
+
+      class Site{
+        constructor(pojoData){
+
+          this.pojoData = pojoData;
+
+          if (pojoData.siteIndex !== undefined){
+            var intIndex = +pojoData.siteIndex;
+            this.url = arrUrls[intIndex];
+          }
+          else if (pojoData.url){
+            this.url = pojoData.url;
+          }
+
+          // todo: needs to be an array
+          this.score = pojoData.score ? [pojoData.score] : [];
+          this.siteNumber = pojoData.siteIndex;
+          
+          this.setup();
+        }
+
+        clone(){
+          var sytNewSite = new Site(this.pojoData);
+          return sytNewSite;
+        }
+
+        getLabel(){
+          return this.score;
+        }
+
+        getNumScores(){
+          return this.score.length;
+        }
+
+        addScore(fScore){
+          this.score.push(fScore);
+        }
+
+        getScore(){
+          var intRetScore = -1;
+
+          if (this.score.length == 1){
+            intRetScore = this.score[0];
+          }
+
+          return intRetScore;
+        }
+
+        getAverageScore(){
+          
+          // console.log(this.score);
+
+          var intSum = this.score.reduce((x, y) => +x + +y, 0);
+          var intLength = this.score.length;
+
+          var fAvg = intSum/intLength; // (this.score);
+          return fAvg;
+        }
+
+        getXParams(){
+          return {
+            padding: this.padding,
+            textsize: this.textsize,
+            contrast_w_white: this.whiteContrast,
+            contrast_w_black: this.whiteContrast,
+            hue: this.hue,
+            saturation: this.saturation,
+            value: this.value,
+          }
+        }
+
+        getKeys(){
+          var pojoRet = {
+            url: "Url of the site",
+            score: "Score given",
+            padding: "Padding used",
+            textsize: "Text ratio sizing used",
+            color: "Color used",
+            // undone
+            contrast_w_white: "Contrast w/ white",
+            contrast_w_black: "Contrast w/ black",
+            hue: "Hue",
+            saturation: "Saturation",
+            value: "Value",
+          };
+
+          return pojoRet;
+        }
+
+        setup(){
+          if (this.url){
+            var pojoData = urlToData(this.url);
+
+            // console.log(pojoData);
+
+            for (var strKey in pojoData){
+              var strValue = pojoData[strKey];
+
+              if (strKey == "color"){
+                strValue = `#${strValue}`;
+              }
+
+              this[strKey] = strValue;
+            }
+
+            this.setupColors();
+          }
+        }
+
+        setupColors(){
+
+          var cColor = Color(this.color);
+
+          var fWhiteContrast = cColor.contrast(Color("#FFF"));
+          var fBlackContrast = cColor.contrast(Color("#000"));
+          var fHue           = cColor.hue();
+          var fSaturation    = cColor.saturationv();
+          var fValue         = cColor.value();
+
+          this.whiteContrast = fWhiteContrast;
+          this.blackContrast = fBlackContrast;
+          this.hue           = fHue;
+          this.saturation    = fSaturation;
+          this.value         = fValue;
+        }
+
+      }
+
+
+
+
+
+
+      
+
+      class Student{
+
+        constructor(pojoData){
+          this.pojoData = pojoData;
+          this.setup();
+        }
+
+        getKeys(){
+          var pojoRet = {
+            answers: "Scores 1-5, in the order they arrived",
+            email: "idNumber, from the database",
+            site_order: "An array, of the order of sites",
+            sites: "sites",
+          };
+
+          return pojoRet;
+        }
+
+        setup(){
+          this.answers = {};
+          
+          for (var i in this.pojoData.answers){
+            this.answers[+i - 1] = + this.pojoData.answers[i];
+          }
+
+          this.email = this.pojoData.idNumber;
+          this.site_order = this.pojoData.siteOrder;
+          this.sites = {};
+          
+          for (var intAnsIndex in this.answers){
+
+            // var intAnsIndex = +strIndex) - 1;
+
+            var intScore = this.answers[intAnsIndex];
+            var intSiteIndex = this.site_order[intAnsIndex];
+
+            var pojoSiteInitVals = {
+              siteIndex: intSiteIndex,
+              score: intScore
+            }
+
+            var sytNewSite = new Site(pojoSiteInitVals);
+            this.sites[intSiteIndex] = sytNewSite;
+          }
+        }
+
+        getSite(intIndex){
+          var sytRetSite = this.sites[intIndex];
+
+          return sytRetSite;
+        }
+
+        getNumAnswers(){
+          return this.answers.length;
+        }
+      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      //  ----------------------   functions  ------------------------
+
+      function sum(arr) { 
+        // returns the sum total of all values in the array
+        return _.reduce(arr, function(memo, num) { return memo + num}, 0); 
+      }
+
+      function average(arr) {
+        // returns the average of all values in the array
+        return sum(arr) / arr.length; 
+      }
+
+      function isObject(objTest){
+        var strPrototype = Object.prototype.toString.call(objTest);
+        var strRightAnswer = "[object Object]";
+        var boolIsObject = (strRightAnswer == strPrototype);
+
+        return boolIsObject;
+      }
+
+      function isArray(objTest){
+        var strPrototype = Object.prototype.toString.call(objTest);
+        var strRightAnswer = "[object Array]";
+        var boolIsObject = (strRightAnswer == strPrototype);
+
+        return boolIsObject;
+      }
+
+      function createResultsObject(objData){
+
+        // console.log("index.html > createResultsObject | objData: ", objData);
+
+        objResults = new Results(objData);
+
+        // console.log("index.html > createResultsObject | objResults: ", objResults);
+
+        // var arrFinished = objResults.getFinishedStudents();
+
+        // console.log("index.html > createResultsObject | arrFinished: ", arrFinished);
+
+        // var xData = objResults.xData();
+        // var yData = objResults.yData();
+
+        return objResults;
+      }
+
+      function test(){
+
+        var mlcTest = makeSVM(); // makeNaiveBayes();
+        // var mlcTest = makeNaiveBayes();
+        // var intK = 7;
+        // var objSplit = mlcTest.getRandomSplitData(intK);
+
+
+        // console.log("test | objSplit: ", objSplit);
+
+        mlcTest.runClassifier();
+      }
+
+      function makeSVM(){
+
+        // console.log("makeNaiveBayes | objResults: ", objResults)
+
+        var fnClassifier = ML.SVM;
+        var arrXData = objResults.xData;
+        var arrYData = objResults.yData;
+        var objOptions = {
+          C: 0.01,
+          tol: 10e-4,
+          maxPasses: 10,
+          maxIterations: 10000,
+          kernel: 'rbf',
+          kernelOptions: {
+            sigma: 0.5
+          }
+        };
+
+        var mlcRetNB = new MLClassifier(fnClassifier, arrXData, arrYData, objOptions);
+        return mlcRetNB;
+      }
+
+      function makeNaiveBayes(){
+
+        // console.log("makeNaiveBayes | objResults: ", objResults)
+
+        var fnClassifier = ML.NaiveBayes.GaussianNB;
+        var arrXData = objResults.xData;
+        var arrYData = objResults.yData;
+        var objOptions = {};
+
+        var mlcRetNB = new MLClassifier(fnClassifier, arrXData, arrYData, objOptions);
+        return mlcRetNB;
+      }
+
+      function initWithMlab(){
+
+        var strDb = "thesis_rater_2";
+        var strCollection = "ratings";
+        var strApiKey = "AFBb-xyx6hdMxNIK3V0il153RnhfZ1U6";
+        var strQueryAllDataUrl = `https://api.mlab.com/api/1/databases/${strDb}/collections/${strCollection}?apiKey=${strApiKey}`;
+        var objData = getMLabData(strQueryAllDataUrl);
+
+        // console.log("index.html > test");
+        // console.log(objData);
+
+        createResultsObject(objData);
+      }
+
+      function printData(){
+        var strDb = "thesis_rater_2";
+        var strCollection = "ratings";
+        var strApiKey = "AFBb-xyx6hdMxNIK3V0il153RnhfZ1U6";
+        var intLimit = 10000;
+        var strQueryAllDataUrl = `https://api.mlab.com/api/1/databases/${strDb}/collections/${strCollection}?apiKey=${strApiKey}&l=${intLimit}`;
+
+        // console.log("mlab_results > printData | strQueryAllDataUrl: ", strQueryAllDataUrl);
+
+        var objData = getMLabData(strQueryAllDataUrl);
+
+        for (var i in objData){
+          var objDatum = objData[i];
+          
+          // console.log(JSON.stringify(objDatum, null));
+        }
+      }
+
+      function initWithSavedData(){
+        var objData = {
+          finishedStudents: getCompleteResults()
+        };
+
+        createResultsObject(objData);
+      }
+
+      function makePojoData(){
+        // red, orange...
+        // padding, text size, 3rd thing
+
+        console.log(objResults);
+        
+        var pjSiteResults = objResults.siteResults;
+        var pjRetResults = {
+          textsize: {}, 
+          padding: {},
+          color: {}
+        };
+
+        for (var i in pjSiteResults){
+          var stTmpSite = pjSiteResults[i];
+
+          var fScore = stTmpSite.getAverageScore();
+          var fTxtSize = stTmpSite['textsize'];
+          var fTxtPadding = stTmpSite['padding'];
+          var strSiteColor = stTmpSite['color'];
+
+          var pjDetails = {
+            textsize: fTxtSize, 
+            padding: fTxtPadding,
+            color: strSiteColor
+          }
+
+          for (var strType in pjDetails){
+            var objDatum = pjDetails[strType];
+
+            if (pjRetResults[strType][objDatum]){
+              pjRetResults[strType][objDatum].push(fScore);
+            }
+            else{
+              pjRetResults[strType][objDatum] = [fScore];
+            }
+          }
+        }
+
+        return pjRetResults;
+      }
+
+      function makeHaveHaventShell(){
+        var pjResData = makePojoData();
+        var pjRetData = {};
+
+        // create the storage first
+        for (var strType in pjResData){
+          var pjBucket = pjResData[strType];
+
+          for (var strSetting in pjBucket){
+            var strKey = `${strType}_${strSetting}`;
+            var arrData = pjBucket[strSetting];
+
+            if (!pjRetData[strKey]){
+              pjRetData[strKey] = {
+                have: [],
+                havent: []
+              };
+            }
+          }
+        }
+
+        return pjRetData;
+      }
+
+      function getWithWithout(){
+        var pjResData = makePojoData();
+        var pjRetData = makeHaveHaventShell();
+
+        // now, fill shell with information
+        for (var strType in pjResData){
+          var pjBucket = pjResData[strType];
+
+          for (var strSetting in pjBucket){
+            var strKey = `${strType}_${strSetting}`;
+            var arrData = pjBucket[strSetting];
+
+            for (var strCntr in pjRetData){
+
+              var arrCurrDataHave   = pjRetData[strCntr]['have'];
+              var arrCurrDataHavent = pjRetData[strCntr]['havent'];
+
+              if (strCntr == strKey){
+                var arrToAdd = arrData.concat(arrCurrDataHave);
+
+                pjRetData[strCntr]['have'] = arrToAdd;
+              }
+              else{
+                var arrToAdd = arrData.concat(arrCurrDataHavent);
+
+                pjRetData[strCntr]['havent'] = arrToAdd;
+              }
+            }
+          }
+        }
+
+        return pjRetData;
+      }
+
+      function init(){
+        // initWithMlab();
+        initWithSavedData();
+
+        // this is seriously some bullshit. leave if you fucking want. shit! I'm
+        // not the work you wanted to get done, or the fun time you wanted to have
+
+        // test();
+        // makePojoData();
+        var pjData = getWithWithout();
+        var strPjData = JSON.stringify(pjData);
+
+        console.log(strPjData);
+      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      //  ----------------------   script  ------------------------
+
+
+
+      setTimeout(init, 600);
+      // setTimeout(printData, 1000);
+
+      
+
+    </script>
+  </body>
+</html>
+
+<!--
+
+
+  To Test:
+    - Results: Finished students
+    - Results: X Data, Y Data
+
+  To DO
+    - Out of the finished students, ge
+
+
+
+  Asides:
+
+  Where am I?
+
+  This must be the most important question to define before you stop work, and when you start.
+
+  So, where are we? Well worth taking the time to ascertain (yes, that's spelled correctly, even in green) what exactly you're working with.
+
+  [After some goofing around]
+
+  Look, what I want is to be able to take an array of machine learning methods, and run them over my results. Once I get "confusion matrices" for each, I'm done.
+
+  As I see it, there are three things to make that happens
+    - a structure to store results
+    - a structure that can store ML methods
+    - something that can iterate, with both these things, in a way, but mostly the latter.
+
+  [More goofing around]
+
+  All these things are imperfect/non-existent. If by 1 we want to be done, then shit! Work. At the first. Then work your way downwards.
+
+
+---- April 3rd ----
+
+
+OK. Fo some reason, the first site of every student is busted. The next task is to debug this, and then 
+
+
+Task List:
+
+* Debug the first site looking like 
+
+        {{siteIndex: 0, score: "3"}
+        score :["3"]
+        siteNumber:0}
+
+        
+    Instead of 
+
+        {blackContrast: 1.6215122972673972, 
+        color: "#4B0082",
+        hue: 274.6153846153845,
+        padding: "-0.3",
+        pojoData: {siteIndex: 1, score: "1"}
+        saturation: 100,
+        score: ["1"]
+        siteNumber:1
+        textsize: "-0.08"
+        url:"localhost/thesispage/?textsize=-0.08&padding=-0.3&color=4B0082"
+        value:50.98039215686274,
+        whiteContrast:12.950873104933951}
+
+* I also recall a difficult with the black and white contrasts being the same
+
+
+---- April 6th ----
+
+OK. Now welcome to the land of shitty predictions:
+
+
+Done:
+
+* Fixed the site:0 bug
+* Gotten the predictions working
+
+Undone:
+
+* Why Naive Bayes doesn't work w/ negative numbers
+* Why SVM is so shitty with my data
+
+
+---- April 9th ----
+
+Todo:
+
++ Get the results in pojo format
+* Get color, padding, text size, breakdwon
+
+Next
+
+* Convert to JSON, put this in the codepen
+* Red vs. not red. charts
+
+
+---- April 10th ----
+
+Todo:
+
++ Students, haves, have nots
+* Convert to JSON, put this in the codepen
+* Red vs. not red. charts
+
+
+
+
+-->
